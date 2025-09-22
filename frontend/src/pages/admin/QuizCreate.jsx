@@ -59,7 +59,9 @@ export default function QuizCreate() {
   // Quiz meta
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [bannerImageUrl, setBannerImageUrl] = useState("");
+  const [bannerImage, setBannerImage] = useState("");
+  const [bannerPreview, setBannerPreview] = useState("");
+  const [bannerUploading, setBannerUploading] = useState(false);
   const [difficulty, setDifficulty] = useState("easy");
   const [timeLimitMin, setTimeLimitMin] = useState(30);
   const [passingScore, setPassingScore] = useState(70);
@@ -67,6 +69,9 @@ export default function QuizCreate() {
   // Badge
   const [badgeTitle, setBadgeTitle] = useState("");
   const [badgeDescription, setBadgeDescription] = useState("");
+  const [badgeImage, setBadgeImage] = useState("");
+  const [badgeImagePreview, setBadgeImagePreview] = useState("");
+  const [badgeUploading, setBadgeUploading] = useState(false);
 
   // Questions
   const [questions, setQuestions] = useState([]);
@@ -93,19 +98,68 @@ export default function QuizCreate() {
   const removeQuestion = (id) =>
     setQuestions(prev => prev.filter(q => q.id !== id));
 
+  async function handleBannerUpload(file) {
+    if (!file) return;
+    
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (PNG, JPEG, or WebP)');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+    
+    const localUrl = URL.createObjectURL(file);
+    setBannerPreview(localUrl);
+    setBannerUploading(true);
+    try {
+      const data = await contentApi.uploadImage(file);
+      setBannerImage(data.url);
+    } catch (e) {
+      console.error('Banner upload error:', e);
+      alert(e.message || "Banner upload failed. Please try again.");
+      setBannerPreview(null); // Clear preview on error
+    } finally {
+      setBannerUploading(false);
+      setTimeout(() => URL.revokeObjectURL(localUrl), 5000);
+    }
+  }
+
+  async function handleBadgeUpload(file) {
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    setBadgeImagePreview(localUrl);
+    setBadgeUploading(true);
+    try {
+      const data = await contentApi.uploadImage(file);
+      setBadgeImage(data.url);
+    } catch (e) {
+      alert(e.message || "Badge upload failed");
+    } finally {
+      setBadgeUploading(false);
+      setTimeout(() => URL.revokeObjectURL(localUrl), 5000);
+    }
+  }
+
   const draft = useMemo(() => ({
     title,
     description,
-    bannerImageUrl,
+    bannerImage: bannerImage || bannerPreview,
     difficulty,
     timeLimitMin: Number(timeLimitMin) || null,
     passingScore: Number(passingScore) || 70,
     badgeTitle,
     badgeDescription,
+    badgeImage: badgeImage || badgeImagePreview,
     status: "draft",
     questions,
     totalPoints: questions.reduce((sum, q) => sum + (q.points || 1), 0)
-  }), [title, description, bannerImageUrl, difficulty, timeLimitMin, passingScore, badgeTitle, badgeDescription, questions]);
+  }), [title, description, bannerImage, bannerPreview, difficulty, timeLimitMin, passingScore, badgeTitle, badgeDescription, badgeImage, badgeImagePreview, questions]);
 
   const canSave = Boolean(
     title.trim() &&
@@ -222,14 +276,41 @@ export default function QuizCreate() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Banner Image URL</label>
-              <input 
-                value={bannerImageUrl} 
-                onChange={(e) => setBannerImageUrl(e.target.value)}
+              <label className="form-label">Banner Image</label>
+              <input
+                type="text"
                 className="form-input"
-                placeholder="https://example.com/image.jpg"
+                placeholder="https://example.com/banner.jpg"
+                value={bannerImage}
+                onChange={(e) => setBannerImage(e.target.value)}
               />
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => handleBannerUpload(e.target.files?.[0])}
+                className="file-input"
+              />
+              {bannerUploading && <div className="upload-status">Uploading banner...</div>}
+              {(bannerPreview || bannerImage) && (
+                <div className="banner-preview-container">
+                  <img
+                    src={bannerImage || bannerPreview}
+                    alt="Banner preview"
+                    className="banner-preview"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling?.remove();
+                      const errorDiv = document.createElement('div');
+                      errorDiv.className = 'banner-error';
+                      errorDiv.textContent = 'Failed to load image preview';
+                      errorDiv.style.cssText = 'color: #e74c3c; font-size: 0.875rem; margin-top: 0.5rem; text-align: center;';
+                      e.target.parentNode.appendChild(errorDiv);
+                    }}
+                  />
+                </div>
+              )}
             </div>
+
 
             <div className="form-grid">
               <div className="form-group">
@@ -348,6 +429,33 @@ export default function QuizCreate() {
                 className="form-textarea"
                 placeholder="Describe what this badge represents..."
               />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Badge Image</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="https://example.com/badge.jpg"
+                value={badgeImage}
+                onChange={(e) => setBadgeImage(e.target.value)}
+              />
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={(e) => handleBadgeUpload(e.target.files?.[0])}
+                className="file-input"
+              />
+              {badgeUploading && <div className="upload-status">Uploading badge...</div>}
+              {(badgeImagePreview || badgeImage) && (
+                <div className="badge-preview-container">
+                  <img
+                    src={badgeImage || badgeImagePreview}
+                    alt="Badge preview"
+                    className="badge-preview"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

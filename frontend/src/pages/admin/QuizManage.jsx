@@ -153,17 +153,6 @@ export default function QuizManage() {
             <div className="quiz-grid">
               {filtered.map(qz => (
                 <div key={qz._id || qz.id} className="quiz-card">
-                  {/* Banner */}
-                  {qz.bannerImage && (
-                    <div className="quiz-banner-container">
-                      <img
-                        src={qz.bannerImage}
-                        alt=""
-                        className="quiz-banner-image"
-                      />
-                      <div className="quiz-banner-overlay"></div>
-                    </div>
-                  )}
 
                   <div className="quiz-card-content">
                     <div className="quiz-header">
@@ -245,14 +234,6 @@ export default function QuizManage() {
       {preview && (
         <div className="modal-overlay" onClick={() => setPreview(null)}>
           <div className="modal-content quiz-preview-modal" onClick={(e) => e.stopPropagation()}>
-            {/* Banner in preview */}
-            {preview.bannerImage && (
-              <img
-                src={preview.bannerImage}
-                alt=""
-                className="preview-banner"
-              />
-            )}
 
             <div className="modal-header">
               <div>

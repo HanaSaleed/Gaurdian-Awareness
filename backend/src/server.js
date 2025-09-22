@@ -24,12 +24,18 @@ app.use(morgan('dev'));
 // Import routes
 import contactRoutes from './routes/contactRoutes.js';
 import contentRoutes from './routes/contentRoutes.js';
+import employeeRoutes from './routes/employeeRoutes.js';
+import simulationRoutes from './routes/simulationRoutes.js';
+import templateRoutes from './routes/templateRoutes.js';
 
 app.get('/', (_, res) => res.json({ ok: true, service: 'Guardians API' }));
 
 // API Routes
 app.use('/api/contact', contactRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/simulations', simulationRoutes);
+app.use('/api/templates', templateRoutes);
 
 const PORT = process.env.PORT || 5000;
 

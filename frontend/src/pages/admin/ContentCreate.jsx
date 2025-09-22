@@ -31,10 +31,13 @@ export default function ContentCreate() {
   const [url, setUrl] = useState("");
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
+  const [topic, setTopic] = useState("");
   const [bannerImage, setBannerImage] = useState("");
-
   const [bannerPreview, setBannerPreview] = useState("");
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [posterImage, setPosterImage] = useState("");
+  const [posterPreview, setPosterPreview] = useState("");
+  const [posterUploading, setPosterUploading] = useState(false);
   const [pdfUploading, setPdfUploading] = useState(false);
   const [imgUploading, setImgUploading] = useState(false);
   const bodyRef = useRef(null);
@@ -42,20 +45,38 @@ export default function ContentCreate() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const dirty = useMemo(() => {
-    if (title.trim() || description.trim() || tags.trim()) return true;
+    if (title.trim() || description.trim() || tags.trim() || topic.trim() || bannerImage || bannerPreview || posterImage || posterPreview) return true;
     if (type === "youtube" || type === "pdf")
-      return !!url.trim() || !!bannerPreview || !!bannerImage;
-    return !!body.trim() || !!bannerPreview || !!bannerImage;
-  }, [title, description, tags, type, url, body, bannerPreview, bannerImage]);
+      return !!url.trim();
+    if (type === "poster")
+      return !!posterImage || !!posterPreview;
+    return !!body.trim();
+  }, [title, description, tags, topic, bannerImage, bannerPreview, posterImage, posterPreview, type, url, body]);
 
   const canSave = useMemo(() => {
     if (!title.trim()) return false;
     if (type === "youtube" || type === "pdf") return !!url.trim();
+    if (type === "poster") return !!(posterImage || posterPreview);
     return !!body.trim();
-  }, [title, type, url, body]);
+  }, [title, type, url, body, posterImage, posterPreview]);
 
-  async function handleBannerChoose(file) {
+
+  async function handleBannerUpload(file) {
     if (!file) return;
+    
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a valid image file (PNG, JPEG, or WebP)');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+    
     const localUrl = URL.createObjectURL(file);
     setBannerPreview(localUrl);
     setBannerUploading(true);
@@ -63,9 +84,27 @@ export default function ContentCreate() {
       const data = await contentApi.uploadImage(file);
       setBannerImage(data.url);
     } catch (e) {
-      alert(e.message || "Banner upload failed");
+      console.error('Banner upload error:', e);
+      alert(e.message || "Banner upload failed. Please try again.");
+      setBannerPreview(null); // Clear preview on error
     } finally {
       setBannerUploading(false);
+      setTimeout(() => URL.revokeObjectURL(localUrl), 5000);
+    }
+  }
+
+  async function handlePosterUpload(file) {
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    setPosterPreview(localUrl);
+    setPosterUploading(true);
+    try {
+      const data = await contentApi.uploadImage(file);
+      setPosterImage(data.url);
+    } catch (e) {
+      alert(e.message || "Poster upload failed");
+    } finally {
+      setPosterUploading(false);
       setTimeout(() => URL.revokeObjectURL(localUrl), 5000);
     }
   }
@@ -118,8 +157,10 @@ export default function ContentCreate() {
         description,
         url,
         body,
-        tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
+        topic,
         bannerImage: bannerImage || bannerPreview,
+        posterImage: posterImage || posterPreview,
+        tags: tags.split(",").map((s) => s.trim()).filter(Boolean),
       });
       if (publish) await contentApi.publish(item._id || item.id);
       alert(publish ? "Published!" : "Saved draft");
@@ -155,8 +196,8 @@ export default function ContentCreate() {
           </button>
         </div>
         <div className="content-header-center">
-          <h1 className="content-main-title">Create New Content</h1>
-          <p className="content-subtitle">Build engaging educational content.</p>
+          <h1 className="content-main-title">Create New Educational Content</h1>
+          <p className="content-subtitle">Build engaging educational content for employee training and development.</p>
         </div>
         <div className="content-header-actions">
           <button className="preview-btn">
@@ -199,30 +240,6 @@ export default function ContentCreate() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Banner Image URL</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="https://example.com/image.jpg"
-                value={bannerImage}
-                onChange={(e) => setBannerImage(e.target.value)}
-              />
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={(e) => handleBannerChoose(e.target.files?.[0])}
-                className="file-input"
-              />
-              {bannerUploading && <div className="upload-status">Uploading...</div>}
-              {(bannerPreview || bannerImage) && (
-                <img
-                  src={bannerImage || bannerPreview}
-                  alt="Banner preview"
-                  className="banner-preview"
-                />
-              )}
-            </div>
 
             <div className="form-group">
               <label className="form-label required">Content Type *</label>
@@ -236,6 +253,7 @@ export default function ContentCreate() {
                 <option value="pdf">PDF Document</option>
                 <option value="blog">Blog Post</option>
                 <option value="writeup">Write-up</option>
+                <option value="poster">Poster</option>
               </select>
             </div>
 
@@ -249,13 +267,92 @@ export default function ContentCreate() {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+
+            <div className="form-group">
+              <label className="form-label">Topic</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g., Cybersecurity Fundamentals, Phishing Awareness, Password Security"
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+              />
+            </div>
+
+            {type !== "poster" && (
+              <div className="form-group">
+                <label className="form-label">Banner Image</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="https://example.com/banner.jpg"
+                  value={bannerImage}
+                  onChange={(e) => setBannerImage(e.target.value)}
+                />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => handleBannerUpload(e.target.files?.[0])}
+                  className="file-input"
+                />
+                {bannerUploading && <div className="upload-status">Uploading banner...</div>}
+                {(bannerPreview || bannerImage) && (
+                  <div className="banner-preview-container">
+                    <img
+                      src={bannerImage || bannerPreview}
+                      alt="Banner preview"
+                      className="banner-preview"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling?.remove();
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'banner-error';
+                        errorDiv.textContent = 'Failed to load image preview';
+                        errorDiv.style.cssText = 'color: #e74c3c; font-size: 0.875rem; margin-top: 0.5rem; text-align: center;';
+                        e.target.parentNode.appendChild(errorDiv);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {type === "poster" && (
+              <div className="form-group">
+                <label className="form-label required">Poster Image *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="https://example.com/poster.jpg"
+                  value={posterImage}
+                  onChange={(e) => setPosterImage(e.target.value)}
+                />
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) => handlePosterUpload(e.target.files?.[0])}
+                  className="file-input"
+                />
+                {posterUploading && <div className="upload-status">Uploading poster...</div>}
+                {(posterPreview || posterImage) && (
+                  <div className="poster-preview-container">
+                    <img
+                      src={posterImage || posterPreview}
+                      alt="Poster preview"
+                      className="poster-preview"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Content Body Section */}
-          <div className="content-section">
-            <h2 className="section-title">Content Body</h2>
-            
-            {(type === "blog" || type === "writeup") && (
+          {type !== "poster" && (
+            <div className="content-section">
+              <h2 className="section-title">Content Body</h2>
+              
+              {(type === "blog" || type === "writeup") && (
               <div className="form-group">
                 <textarea
                   ref={bodyRef}
@@ -303,38 +400,41 @@ export default function ContentCreate() {
                 )}
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Side Panel */}
         <div className="content-right">
           {/* Resources Section */}
-          <div className="content-section">
-            <h2 className="section-title">Resources</h2>
-            
-            <div className="form-group">
-              <select className="form-select">
-                <option>External Link</option>
-                <option>File Upload</option>
-                <option>Video</option>
-              </select>
-            </div>
+          {type !== "poster" && (
+            <div className="content-section">
+              <h2 className="section-title">Resources</h2>
+              
+              <div className="form-group">
+                <select className="form-select">
+                  <option>External Link</option>
+                  <option>File Upload</option>
+                  <option>Video</option>
+                </select>
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">Resource title</label>
-              <input type="text" className="form-input" />
-            </div>
+              <div className="form-group">
+                <label className="form-label">Resource title</label>
+                <input type="text" className="form-input" />
+              </div>
 
-            <div className="form-group">
-              <label className="form-label">URL</label>
-              <input type="url" className="form-input" />
-            </div>
+              <div className="form-group">
+                <label className="form-label">URL</label>
+                <input type="url" className="form-input" />
+              </div>
 
-            <button className="add-resource-btn">
-              <span className="btn-icon">+</span>
-              Add Resource
-            </button>
-          </div>
+              <button className="add-resource-btn">
+                <span className="btn-icon">+</span>
+                Add Resource
+              </button>
+            </div>
+          )}
 
           {/* Tags Section */}
           <div className="content-section">

@@ -68,13 +68,13 @@ export default function Header() {
             Home
           </NavLink>
 
-          {/* force underline when on /employee/learn/* */}
+          {/* force underline when on /learn/* or /employee/learn/* */}
           <NavLink
-            to="/employee/learn"
+            to="/learn"
             className={({ isActive }) =>
               cn(
                 linkBase,
-                (isActive || eduActive) && activeUnderline
+                (isActive || eduActive || pathname.startsWith("/learn")) && activeUnderline
               )
             }
           >
@@ -93,6 +93,16 @@ export default function Header() {
           >
             Training Quizzes
           </NavLink>
+
+
+          {auth.loggedIn && (
+            <NavLink
+              to="/employee/select"
+              className={({ isActive }) => cn(linkBase, isActive && activeUnderline)}
+            >
+              Employee Dashboard
+            </NavLink>
+          )}
 
           <button
             type="button"
@@ -166,9 +176,9 @@ export default function Header() {
               Home
             </NavLink>
             <NavLink
-              to="/employee/learn"
+              to="/learn"
               onClick={() => setOpen(false)}
-              className={({ isActive }) => cn("mobile-nav-link", (isActive || eduActive) && "active")}
+              className={({ isActive }) => cn("mobile-nav-link", (isActive || eduActive || pathname.startsWith("/learn")) && "active")}
             >
               Educational Content
             </NavLink>
@@ -179,6 +189,15 @@ export default function Header() {
             >
               Training Quizzes
             </NavLink>
+            {auth.loggedIn && (
+              <NavLink
+                to="/employee/select"
+                onClick={() => setOpen(false)}
+                className={({ isActive }) => cn("mobile-nav-link", isActive && "active")}
+              >
+                Employee Dashboard
+              </NavLink>
+            )}
             <button
               onClick={() => { setOpen(false); goDashboard(); }}
               className={cn("mobile-nav-button", adminActive && "active")}

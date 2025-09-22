@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/common/Header";
 import Footer from "../../components/common/Footer";
 import { contentApi } from "../../api/content";
@@ -7,11 +7,15 @@ import "./Learn.css";
 
 export default function Learn() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("");
+
+  // Determine if we're on the public or employee route
+  const isPublicRoute = location.pathname.startsWith('/learn');
 
   useEffect(() => {
     const loadContent = async () => {
@@ -73,8 +77,10 @@ export default function Learn() {
         <div className="learn-header">
           <h1>Educational Content</h1>
           <p>
-            Welcome to our learning hub! Here you can access educational materials, 
-            videos, and resources to improve your cybersecurity knowledge.
+            {isPublicRoute 
+              ? "Explore our comprehensive collection of cybersecurity educational materials, videos, and resources. Learn about security best practices, threat awareness, and protection strategies."
+              : "Welcome to our learning hub! Here you can access educational materials, videos, and resources to improve your cybersecurity knowledge."
+            }
           </p>
         </div>
 
@@ -155,7 +161,7 @@ export default function Learn() {
               
               <div className="content-card-footer">
                 <button
-                  onClick={() => navigate(`/employee/learn/${item._id || item.id}`)}
+                  onClick={() => navigate(isPublicRoute ? `/content/${item._id || item.id}` : `/employee/learn/${item._id || item.id}`)}
                   className="learn-btn"
                 >
                   Start Learning
